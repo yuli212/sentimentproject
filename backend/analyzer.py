@@ -1,47 +1,50 @@
 import boto3
 import base64
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 REGION = 'us-east-1'
 
 try:
-    # Kita tetap pertahankan KMS client karena LabRole biasanya mengizinkan KMS
+    # Maintain connection to AWS KMS security system
     kms_client = boto3.client('kms', region_name=REGION)
 except Exception as e:
-    print(f"[ERROR] Gagal menginisialisasi KMS client: {e}")
+    print(f"[ERROR] Failed to initialize KMS client: {e}")
+
+# Initialize VADER engine outside function
+nlp_analyzer = SentimentIntensityAnalyzer()
 
 def analyze_sentiment(text):
     """
-    Pivot Solusi: Analisis Sentimen Berbasis Kamus Bahasa Inggris (Lokal).
-    Bebas dari hambatan AccessDenied AWS Academy.
+    Sentiment analysis using VADER NLP algorithm.
+    Can detect grammar, negation, and emotional intensity.
     """
-    # Kamus kata sederhana untuk mengecek teks berita bahasa Inggris
-    positive_words = ['growth', 'up', 'rise', 'gain', 'success', 'higher', 'positive', 'boost', 'profit', 'surge']
-    negative_words = ['drop', 'crash', 'down', 'fall', 'panic', 'loss', 'negative', 'crisis', 'slump', 'weakens']
+    # Generate sentiment score dictionary 
+    scores = nlp_analyzer.polarity_scores(text)
     
-    # Ubah teks ke huruf kecil dan pecah menjadi kata-kata
-    words = text.lower().split()
+    # 'compound' score is VADER's primary metric (ranges from -1 to 1)
+    compound = scores['compound']
     
-    pos_count = sum(1 for word in words if word in positive_words)
-    neg_count = sum(1 for word in words if word in negative_words)
-    
-    # Tentukan hasil sentimen berdasarkan jumlah kata yang dominan
-    if pos_count > neg_count:
+    #  Classification logic for VADER 
+    if compound >= 0.05:
         sentiment = "POSITIVE"
-        score = (pos_count / (pos_count + neg_count)) * 100
-    elif neg_count > pos_count:
+        # Convert compound score to confidence percentage (0-100%)
+        confidence = compound * 100
+    elif compound <= -0.05:
         sentiment = "NEGATIVE"
-        score = (neg_count / (pos_count + neg_count)) * 100
+        # Use absolute value so percentage remains positive
+        confidence = abs(compound) * 100
     else:
         sentiment = "NEUTRAL"
-        score = 100.0
+        # If neutral, use VADER's 'neu' score as percentage
+        confidence = scores['neu'] * 100
         
     return {
         'sentiment': sentiment,
-        'confidence_score': round(score, 2)
+        'confidence_score': round(confidence, 2)
     }
 
 def encrypt_data(text, kms_key_id):
-    """Fungsi enkripsi tetap dipertahankan"""
+    """KMS encryption function remains unchanged, secures text to binary"""
     try:
         response = kms_client.encrypt(
             KeyId=kms_key_id,
@@ -50,5 +53,5 @@ def encrypt_data(text, kms_key_id):
         ciphertext_blob = response['CiphertextBlob']
         return base64.b64encode(ciphertext_blob).decode('utf-8')
     except Exception as e:
-        print(f"[ERROR] Gagal mengenkripsi data dengan KMS: {e}")
+        print(f"[ERROR] Failed to encrypt data with KMS: {e}")
         return None

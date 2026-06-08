@@ -3,24 +3,23 @@ import boto3
 import uuid
 from datetime import datetime
 
-# Mengimpor modul buatan kita sebelumnya
+# Import custom modules created previously
 import scraper
 import analyzer
 
-# Inisialisasi koneksi ke Amazon DynamoDB
-# Pastikan nama tabel sesuai dengan yang akan dibuat di AWS Console nanti
+# Initialize connection to Amazon DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table = dynamodb.Table('SentimentHistory')
 
-# KMS Key ID (Nanti diganti dengan ARN asli dari AWS Console)
+# KMS Key ID
 KMS_KEY_ID = "arn:aws:kms:us-east-1:629478360569:key/a527c2a7-f3d8-4b86-be99-adfeaebc2c84"
 
 def lambda_handler(event, context):
     """
-    Fungsi utama yang akan dipanggil oleh AWS Lambda saat dipicu oleh API Gateway.
+    Main function that will be called by AWS Lambda when triggered by API Gateway.
     """
-    # 1. Konfigurasi CORS (Cross-Origin Resource Sharing)
-    # Sangat krusial! Tanpa ini, browser akan memblokir web S3 milikmu saat mencoba memanggil API ini.
+    # 1. Configure CORS 
+    # Without this, browser will block your S3 web when calling this API.
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -28,7 +27,7 @@ def lambda_handler(event, context):
     }
 
     try:
-        # Menangkap rute path dan metode HTTP dari API Gateway
+        # Capture route path and HTTP method from API Gateway
         http_method = event.get('httpMethod')
         path = event.get('path')
 
@@ -36,75 +35,90 @@ def lambda_handler(event, context):
         if http_method == 'OPTIONS':
             return {"statusCode": 200, "headers": headers, "body": json.dumps("CORS OK")}
 
-        # ========================================================
-        # RUTE 1: /get-news (Fase 1 - Mengambil Daftar Berita)
-        # ========================================================
+        # ROUTE 1: /get-news (Fetch News)
         if path == '/get-news' and http_method == 'GET':
-            # Mengambil parameter keyword dari URL (misal: /get-news?keyword=dollar)
+            # Get keyword parameter from URL (e.g., /get-news?keyword=dollar)
             query_params = event.get('queryStringParameters') or {}
             keyword = query_params.get('keyword', 'dollar')
             
-            # Memanggil modul scraper.py
-            news_list = scraper.fetch_news(keyword, max_results=5)
+            # Call scraper.py module
+            news_list = scraper.fetch_news(keyword, max_results=10) 
             
             return {
                 "statusCode": 200,
                 "headers": headers,
                 "body": json.dumps({
-                    "message": "Berhasil mengambil berita",
+                    "message": "Successfully fetched news",
                     "data": news_list
                 })
             }
 
-        # ========================================================
-        # RUTE 2: /analyze (Fase 2 - Analisis AI & Simpan ke DB)
-        # ========================================================
-        elif path == '/analyze' and http_method == 'POST':
-            # Membaca data yang dikirim oleh JavaScript dari browser
-            body = json.loads(event.get('body', '{}'))
-            news_title = body.get('title', '')
-            news_summary = body.get('summary', '')
+        # ROUTE 2: /analyze (VADER Analysis & Save to DB)
+        elif path == '/analyze' and http_method == 'GET':
+            query_params = event.get('queryStringParameters') or {}
+            keyword = query_params.get('keyword', 'dollar')
 
-            # A. Proses Analisis AI (Memanggil analyzer.py)
-            text_to_analyze = news_summary if news_summary else news_title
-            ai_result = analyzer.analyze_sentiment(text_to_analyze)
-
-            # B. Proses Enkripsi Keamanan (Memanggil analyzer.py)
-            encrypted_text = analyzer.encrypt_data(text_to_analyze, KMS_KEY_ID)
-
-            # C. Proses Penyimpanan Database (DynamoDB)
-            # Menghasilkan ID unik untuk setiap rekaman
-            record_id = str(uuid.uuid4())
-            waktu_sekarang = datetime.utcnow().isoformat()
-
-            table.put_item(
-                Item={
-                    'RecordID': record_id,           # Partition Key di DynamoDB
-                    'Timestamp': waktu_sekarang,     # Sort Key di DynamoDB
-                    'Title': news_title,
-                    'Sentiment': ai_result['sentiment'],
-                    'Confidence': str(ai_result['confidence_score']),
-                    'Encrypted_Text': encrypted_text or "ENCRYPTION_FAILED"
+            # 1. Fetch 10 news articles
+            news_list = scraper.fetch_news(keyword, max_results=10)
+            
+            if not news_list:
+                return {
+                    "statusCode": 404,
+                    "headers": headers,
+                    "body": json.dumps({"error": "No news found."})
                 }
-            )
 
-            # Mengembalikan hasil akhir ke web browser
+            analysis_results = []
+
+            # 2. Loop through each news article
+            for news in news_list:
+                news_title = news.get('title', '')
+                news_summary = news.get('summary', '')
+                news_link = news.get('link', '#')
+                
+                text_to_analyze = news_summary if news_summary else news_title
+                
+                # Process Analysis & Encryption
+                ai_result = analyzer.analyze_sentiment(text_to_analyze)
+                encrypted_text = analyzer.encrypt_data(text_to_analyze, KMS_KEY_ID)
+
+                # Save to DynamoDB
+                record_id = str(uuid.uuid4())
+                table.put_item(
+                    Item={
+                        'RecordID': record_id,
+                        'Timestamp': datetime.utcnow().isoformat(),
+                        'Title': news_title,
+                        'Sentiment': ai_result['sentiment'],
+                        'Confidence': str(ai_result['confidence_score']),
+                        'Encrypted_Text': encrypted_text or "ENCRYPTION_FAILED"
+                    }
+                )
+
+                # Add to results list to send to web
+                analysis_results.append({
+                    "title": news_title,
+                    "link": news_link,
+                    "sentiment": ai_result['sentiment'],
+                    "confidence": ai_result['confidence_score']
+                })
+
+            # 3. Return array/list containing 5 results
             return {
                 "statusCode": 200,
                 "headers": headers,
                 "body": json.dumps({
-                    "message": "Analisis selesai dan tersimpan aman di database.",
-                    "sentiment": ai_result['sentiment'],
-                    "confidence": ai_result['confidence_score']
+                    "message": "Successfully analyzed 5 news articles",
+                    "data": analysis_results
                 })
             }
 
-        # Jika rute tidak ditemukan
+        # If route not found
         else:
             return {
                 "statusCode": 404, 
                 "headers": headers, 
-                "body": json.dumps("Rute API tidak ditemukan.")
+                "body": json.dumps("API route not found.")
             }
 
     except Exception as e:
@@ -112,5 +126,5 @@ def lambda_handler(event, context):
         return {
             "statusCode": 500,
             "headers": headers,
-            "body": json.dumps({"error": "Terjadi kesalahan internal pada server."})
+            "body": json.dumps({"error": "An internal server error occurred."})
         }
