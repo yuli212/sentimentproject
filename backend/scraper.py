@@ -8,7 +8,7 @@ def fetch_news(keyword, max_results=5):
     """
     print(f"[INFO] Starting news search for keyword: '{keyword}'...")
     
-    # 1. Format keyword to be URL-safe 
+    # 1. Format keyword for URL
     safe_keyword = urllib.parse.quote(keyword)
     
     # 2. RSS Feed API Endpoint
@@ -21,16 +21,20 @@ def fetch_news(keyword, max_results=5):
         
         # 4. Validate if no news found
         if not feed.entries:
-            print("[WARN] No news found.")
+            print("[WARNING] No news found.")
             return news_list
 
         # 5. Loop to extract important elements from each news article
         for entry in feed.entries[:max_results]:
+            
+            # Safety net trick: Capture all possible time tag variations that Google might use
+            release_time = entry.get('published') or entry.get('updated') or entry.get('pubDate') or "Unknown release time"
+            
             news_item = {
                 'title': entry.title,
                 'link': entry.link,
-                # Get summary, if not available, return empty string
-                'summary': entry.get('description', '') 
+                'summary': entry.get('description', ''),
+                'date': release_time  # Add captured time result
             }
             news_list.append(news_item)
             
@@ -41,10 +45,8 @@ def fetch_news(keyword, max_results=5):
         print(f"[ERROR] Error occurred while fetching RSS: {e}")
         return []
 
-# ==========================================
 # LOCAL TESTING BLOCK
-# ==========================================
-# Code below will ONLY run if you execute this file directly in terminal
+# Function will ONLY run if executed directly in terminal
 
 if __name__ == "__main__":
     # Test the function with a sample keyword
@@ -55,4 +57,5 @@ if __name__ == "__main__":
     for i, news in enumerate(news_results, 1):
         print(f"{i}. Title: {news['title']}")
         print(f"   Link : {news['link']}")
+        print(f"   Date : {news['date']}")
         print(f"   Text : {news['summary'][:100]}...\n")

@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     Main function that will be called by AWS Lambda when triggered by API Gateway.
     """
     # 1. Configure CORS 
-    # Without this, browser will block your S3 web when calling this API.
+    # Allow frontrend to access API without CORS error
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -31,17 +31,17 @@ def lambda_handler(event, context):
         http_method = event.get('httpMethod')
         path = event.get('path')
 
-        # 2. Handle CORS Preflight Request
+        # 2. Handle CORS request
         if http_method == 'OPTIONS':
             return {"statusCode": 200, "headers": headers, "body": json.dumps("CORS OK")}
 
-        # ROUTE 1: /get-news (Fetch News)
+        # Step 1: /get-news (Fetch News)
         if path == '/get-news' and http_method == 'GET':
-            # Get keyword parameter from URL (e.g., /get-news?keyword=dollar)
+            # Get keyword parameter from URL 
             query_params = event.get('queryStringParameters') or {}
             keyword = query_params.get('keyword', 'dollar')
             
-            # Call scraper.py module
+            # Call scraper.py
             news_list = scraper.fetch_news(keyword, max_results=10) 
             
             return {
@@ -53,7 +53,7 @@ def lambda_handler(event, context):
                 })
             }
 
-        # ROUTE 2: /analyze (VADER Analysis & Save to DB)
+        # Step 2: /analyze (Analyze Sentiment + Save to DynamoDB)
         elif path == '/analyze' and http_method == 'GET':
             query_params = event.get('queryStringParameters') or {}
             keyword = query_params.get('keyword', 'dollar')
@@ -78,42 +78,49 @@ def lambda_handler(event, context):
                 
                 text_to_analyze = news_summary if news_summary else news_title
                 
-                # Process Analysis & Encryption
+                # Execute sentiment analysis and encryption
                 ai_result = analyzer.analyze_sentiment(text_to_analyze)
                 encrypted_text = analyzer.encrypt_data(text_to_analyze, KMS_KEY_ID)
 
                 # Save to DynamoDB
                 record_id = str(uuid.uuid4())
-                table.put_item(
-                    Item={
-                        'RecordID': record_id,
-                        'Timestamp': datetime.utcnow().isoformat(),
-                        'Title': news_title,
-                        'Sentiment': ai_result['sentiment'],
-                        'Confidence': str(ai_result['confidence_score']),
-                        'Encrypted_Text': encrypted_text or "ENCRYPTION_FAILED"
-                    }
-                )
+                try:
+                    table.put_item(
+                        Item={
+                            'RecordID': record_id,
+                            'Timestamp': datetime.utcnow().isoformat(),
+                            'Keyword': str(keyword),  # Save search keyword
+                            'Title': str(news_title),
+                            'Date': str(news.get('date', 'Unknown release time')),  # Save publication date
+                            'Sentiment': str(ai_result['sentiment']),
+                            'Confidence': str(ai_result['confidence_score']),
+                            'Encrypted_Text': encrypted_text or "ENCRYPTION_FAILED"
+                        }
+                    )
+                except Exception as db_error:
+                    print(f"[WARNING] Failed to save record to DynamoDB: {db_error}")
+                    # Loop will continue to next news even if fails
 
                 # Add to results list to send to web
                 analysis_results.append({
                     "title": news_title,
                     "link": news_link,
+                    "date": news.get('date', 'Unknown release time'),
                     "sentiment": ai_result['sentiment'],
                     "confidence": ai_result['confidence_score']
                 })
 
-            # 3. Return array/list containing 5 results
+            # 3. Return array/list containing results
             return {
                 "statusCode": 200,
                 "headers": headers,
                 "body": json.dumps({
-                    "message": "Successfully analyzed 5 news articles",
+                    "message": f"Successfully analyzed {len(analysis_results)} news articles",  # Dynamic message
                     "data": analysis_results
                 })
             }
 
-        # If route not found
+        # if route not found, return 404
         else:
             return {
                 "statusCode": 404, 

@@ -1,13 +1,11 @@
-// 1. Ganti dengan Invoke URL dari API Gateway-mu
+// 1. API Gateway URL
 const API_URL = "https://53rhocdog2.execute-api.us-east-1.amazonaws.com/dev";
 
-// 2. Fungsi Utama (Wajib menggunakan 'async')
+// 2. Main Function
 async function cariBerita() {
-    // Capture element from HTML
     const keyword = document.getElementById("keywordInput").value;
     const resultsArea = document.getElementById("resultsArea");
     
-    // Validate empty input
     if (!keyword) {
         alert("Please enter a keyword!");
         return;
@@ -15,8 +13,9 @@ async function cariBerita() {
 
     // Display loading indicator
     resultsArea.innerHTML = "<p style='text-align:center; color:#3498db;'>Fetching and analyzing 10 news articles from the cloud... 🔍</p>";
-    // Try-catch block for API call
+
     try {
+        // Call API Gateway directly without authentication headers
         const response = await fetch(`${API_URL}/analyze?keyword=${keyword}`);
         const result = await response.json();
 
@@ -26,40 +25,35 @@ async function cariBerita() {
             return;
         }
 
-        // Open grid wrapper
-        let htmlContent = `<div class="news-grid">`;
+        // Open news list wrapper
+        let htmlContent = `<div class="news-list">`;
 
-        // Loop through 10 data from Lambda
-        result.data.forEach((news, index) => {
+        result.data.forEach((news) => {
             let badgeClass = "neutral";
             if (news.sentiment === "POSITIVE") badgeClass = "positive";
             if (news.sentiment === "NEGATIVE") badgeClass = "negative";
 
-            // Use dynamic illustration image
-            const randomImage = `https://picsum.photos/seed/${keyword}${index}/400/200`;
+            // Get publication date from Lambda
+            // If not available, show unknown
+            const publishDate = news.date || "Unknown release time";
 
-            // Build HTML structure for each card
+            // Build HTML structure without image, add date meta
             htmlContent += `
-                <div class="result-card">
-                    <img src="${randomImage}" alt="News Illustration" class="news-image">
+                <div class="list-item">
+                    <div class="news-meta">🕒 ${publishDate}</div>
                     
-                    <div class="card-content">
-                        <div class="news-title">${news.title}</div>
-                        <a href="${news.link}" target="_blank" class="news-link">Read Original Source &rarr;</a>
-                        
-                        <div class="sentiment-box">
-                            <span class="badge ${badgeClass}">${news.sentiment}</span>
-                            <span class="confidence">${news.confidence}% Score</span>
-                        </div>
+                    <div class="news-title">${news.title}</div>
+                    <a href="${news.link}" target="_blank" class="news-link">Read Original Source &rarr;</a>
+                    
+                    <div class="sentiment-box">
+                        <span class="badge ${badgeClass}">${news.sentiment}</span>
+                        <span class="confidence">${news.confidence}% Score</span>
                     </div>
                 </div>
             `;
         });
 
-        // Close grid wrapper
         htmlContent += `</div>`;
-        
-        // Insert all cards to screen
         resultsArea.innerHTML = htmlContent;
         
     } catch (error) {

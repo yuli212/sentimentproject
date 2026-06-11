@@ -10,7 +10,7 @@ try:
 except Exception as e:
     print(f"[ERROR] Failed to initialize KMS client: {e}")
 
-# Initialize VADER engine outside function
+# Initialize VADER
 nlp_analyzer = SentimentIntensityAnalyzer()
 
 def analyze_sentiment(text):
@@ -31,7 +31,7 @@ def analyze_sentiment(text):
         confidence = compound * 100
     elif compound <= -0.05:
         sentiment = "NEGATIVE"
-        # Use absolute value so percentage remains positive
+        # Use absolute value to keep confidence positive
         confidence = abs(compound) * 100
     else:
         sentiment = "NEUTRAL"
