@@ -4,19 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Sentiment Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <h1>News Sentiment Analyzer</h1>
         <p>Analyze Sentiment of News Articles in Real-time</p>
-        
-        <div style="margin-bottom: 20px;">
-            <input type="text" id="keywordInput" placeholder="Type a keyword" value="dollar">
-            <button onclick="cariBerita()">Search & Analyze</button>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" id="tab-btn-search" onclick="switchTab('search')">
+                <i class="fa-solid fa-magnifying-glass"></i> Search & Analyze
+            </button>
+            <button class="tab-btn" id="tab-btn-history" onclick="switchTab('history')">
+                <i class="fa-solid fa-clock-rotate-left"></i> History
+            </button>
+        </nav>
+
+        <!-- Tab 1: Search & Analyze -->
+        <div id="tab-search" class="tab-panel">
+            <div class="search-box">
+                <input type="text" id="keywordInput" placeholder="Type a keyword" value="dollar">
+                <button onclick="searchNews()">
+                    <i class="fa-solid fa-magnifying-glass"></i> Search
+                </button>
+            </div>
+            <div id="resultsArea"></div>
         </div>
 
-        <div id="resultsArea"></div>
+        <!-- Tab 2: History -->
+        <div id="tab-history" class="tab-panel" style="display: none;">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Retrieval Time</th>
+                        <th>Keyword</th>
+                        <th>Sentiment</th>
+                        <th>News Text</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+
+            <div id="paginationControls" class="pagination-controls" style="display: none;">
+                <button id="prevBtn" class="page-btn" onclick="changePage(-1)">
+                    <i class="fa-solid fa-chevron-left"></i> Previous
+                </button>
+                <span id="pageIndicator" class="page-indicator">Page 1 of 1</span>
+                <button id="nextBtn" class="page-btn" onclick="changePage(1)">
+                    Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

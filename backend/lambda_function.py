@@ -1,4 +1,5 @@
 import json
+import math
 import boto3
 import uuid
 from datetime import datetime
@@ -119,6 +120,61 @@ def lambda_handler(event, context):
                     "data": analysis_results
                 })
             }
+
+        # Step 3: /history (Fetch past analysis records from DynamoDB)
+        elif path == '/history' and http_method == 'GET':
+            try:
+                query_params = event.get('queryStringParameters') or {}
+                page = max(1, int(query_params.get('page', 1)))
+                limit = min(max(1, int(query_params.get('limit', 20))), 50)
+
+                # Full table scan — follow LastEvaluatedKey to get all records
+                items = []
+                scan_response = table.scan()
+                items.extend(scan_response.get('Items', []))
+                while 'LastEvaluatedKey' in scan_response:
+                    scan_response = table.scan(ExclusiveStartKey=scan_response['LastEvaluatedKey'])
+                    items.extend(scan_response.get('Items', []))
+
+                # Sort by Timestamp descending (newest first)
+                items.sort(key=lambda x: x.get('Timestamp', ''), reverse=True)
+
+                total_records = len(items)
+                total_pages = math.ceil(total_records / limit) if total_records > 0 else 1
+
+                # Slice only the records needed for this page
+                start = (page - 1) * limit
+                page_items = items[start:start + limit]
+
+                # Decrypt only the page slice — avoids KMS timeout on large datasets
+                history_data = []
+                for item in page_items:
+                    if 'Encrypted_Text' in item:
+                        item['Plain_Text'] = analyzer.decrypt_data(item['Encrypted_Text'])
+                        del item['Encrypted_Text']
+                    history_data.append(item)
+
+                return {
+                    "statusCode": 200,
+                    "headers": headers,
+                    "body": json.dumps({
+                        "message": f"Fetched {len(history_data)} of {total_records} records",
+                        "data": history_data,
+                        "pagination": {
+                            "page": page,
+                            "limit": limit,
+                            "totalRecords": total_records,
+                            "totalPages": total_pages
+                        }
+                    })
+                }
+            except Exception as db_error:
+                print(f"[ERROR] Failed to fetch history from DynamoDB: {db_error}")
+                return {
+                    "statusCode": 500,
+                    "headers": headers,
+                    "body": json.dumps({"error": "Failed to retrieve history."})
+                }
 
         # if route not found, return 404
         else:

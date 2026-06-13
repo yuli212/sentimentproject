@@ -7,8 +7,8 @@
 }
 
 body {
-    background-color: #f8fafc; 
-    color: #0f172a; 
+    background-color: #f8fafc;
+    color: #0f172a;
     display: flex;
     justify-content: center;
     align-items: start;
@@ -16,7 +16,7 @@ body {
     padding: 60px 20px;
 }
 
-/* Main Container*/
+/* Main Container */
 .container {
     width: 100%;
     max-width: 1600px;
@@ -27,7 +27,7 @@ body {
     align-items: center;
 }
 
-/* Typography  */
+/* Typography */
 h1 {
     font-size: 2.5rem;
     font-weight: 800;
@@ -43,7 +43,60 @@ p {
     max-width: 600px;
 }
 
-/*  Search Bar Area */
+/* ── Tab Navigation ─────────────────────────────── */
+.tab-nav {
+    display: flex;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 36px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.tab-btn {
+    padding: 10px 28px;
+    background: transparent;
+    color: #64748b;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+    transform: none;
+}
+
+.tab-btn.active {
+    background-color: #005088;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 80, 136, 0.2);
+}
+
+.tab-btn.active:hover {
+    background-color: #004070;
+    transform: none;
+}
+
+/* ── Tab Panels ─────────────────────────────────── */
+.tab-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeIn 0.2s ease;
+}
+
+/* ── Search Bar ─────────────────────────────────── */
 .search-box {
     display: flex;
     width: 100%;
@@ -78,7 +131,7 @@ input::placeholder {
 
 button {
     padding: 12px 26px;
-    background-color: #2563eb; 
+    background-color: #2563eb;
     color: #ffffff;
     border: none;
     border-radius: 12px;
@@ -97,13 +150,12 @@ button:active {
     transform: translateY(1px);
 }
 
-/*  Container */
-#hasilArea {
+/* ── Results Area ───────────────────────────────── */
+#resultsArea {
     width: 100%;
-    margin-top: 20px;
 }
 
-/* --- Vertical List Layout --- */
+/* Vertical List Layout */
 .news-list {
     display: flex;
     flex-direction: column;
@@ -113,7 +165,7 @@ button:active {
     margin: 0 auto;
 }
 
-/* --- List Item (Without Image) --- */
+/* List Item */
 .list-item {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -132,7 +184,7 @@ button:active {
     transform: translateX(4px);
 }
 
-/* Meta Data (Publication Date)*/
+/* Publication Date */
 .news-meta {
     font-size: 0.85rem;
     color: #64748b;
@@ -140,15 +192,7 @@ button:active {
     font-weight: 500;
 }
 
-/* Card Body Content */
-.card-content {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-/* Title Adjustment for List Mode */
+/* News Title */
 .news-title {
     font-size: 1.2rem;
     color: #1e293b;
@@ -172,7 +216,7 @@ button:active {
     text-decoration: underline;
 }
 
-/* Footer Card Box (Sentiment & Score) */
+/* Sentiment Footer */
 .sentiment-box {
     margin-top: auto;
     border-top: 1px solid #f1f5f9;
@@ -182,7 +226,7 @@ button:active {
     align-items: center;
 }
 
-/* Pills Badge */
+/* ── Badges ─────────────────────────────────────── */
 .badge {
     padding: 6px 14px;
     border-radius: 100px;
@@ -206,7 +250,7 @@ button:active {
     color: #475569;
 }
 
-/* Confidence Score Typography */
+/* Confidence Score */
 .confidence {
     font-size: 0.95rem;
     font-weight: 700;
@@ -217,7 +261,88 @@ button:active {
     border: 1px solid #e2e8f0;
 }
 
-/* Animation */
+/* ── History Table ──────────────────────────────── */
+#historyTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#historyTable th,
+#historyTable td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+}
+
+#historyTable th {
+    background-color: #005088;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+#historyTable tr:hover {
+    background-color: #f8fafc;
+}
+
+#historyTable td {
+    color: #334155;
+}
+
+/* ── Pagination ─────────────────────────────────── */
+.pagination-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.page-btn {
+    background-color: #005088;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-btn:hover:not(:disabled) {
+    background-color: #004070;
+    transform: translateY(-1px);
+}
+
+.page-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.page-btn:disabled {
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-weight: 700;
+    color: #334155;
+    font-size: 1rem;
+    min-width: 130px;
+    text-align: center;
+}
+
+/* ── Animation ──────────────────────────────────── */
 @keyframes fadeIn {
     from {
         opacity: 0;
